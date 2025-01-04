@@ -1,0 +1,9 @@
+*__pycache__/
+.env
+myenv/
+.venv
+data/
+.python-version
+poetry.lock
+pyproject.toml
+check_style.sh
