@@ -9,4 +9,5 @@ COPY . .
 
 EXPOSE 10000
 
-CMD ["python", "bot.py"]
+# Запуск фиктивного HTTP-сервера и бота
+CMD python -m http.server 8000 & python bot.py
