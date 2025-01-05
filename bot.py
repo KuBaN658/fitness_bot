@@ -1,10 +1,14 @@
 import asyncio
-import logging
 from aiogram import Bot, Dispatcher
 from core.tools.settings import settings
 from core.handlers.basic import basic_router
 from core.handlers.form import form_router
 from core.tools.users import UserStorage
+from core.tools.middlewares import LoggingMiddleware
+
+from core.tools import app_logger
+
+logger = app_logger.get_logger(__name__)
 
 
 async def start_bot(bot: Bot) -> None:
@@ -14,6 +18,7 @@ async def start_bot(bot: Bot) -> None:
 
     :param bot: Объект бота, используемый для отправки сообщений.
     """
+    logger.debug('Бот запущен', user_id=bot.id)
     await bot.send_message(settings.admin_id, text='Бот запущен!')
 
 
@@ -23,6 +28,7 @@ async def stop_bot(bot: Bot) -> None:
 
     :param bot: Объект бота, используемый для отправки сообщений.
     """
+    logger.debug('Бот остановлен', user_id=bot.id)
     await bot.send_message(settings.admin_id, text='Бот остановлен!')
 
 
@@ -42,15 +48,11 @@ async def main() -> None:
     dp.include_router(form_router)
     dp.include_router(basic_router)
 
+    # Подключение мидлваре для логирования сообщений
+    dp.message.middleware(LoggingMiddleware())
+
     # Создание объекта бота с использованием токена из настроек
     bot = Bot(token=settings.bot_token)
-
-    # Настройка логирования
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - [%(levelname)s] - %(name)s"
-               "(%(filename)s).%(funcName)s(%(lineno)d) - %(message)s"
-    )
 
     # Регистрация функций, которые будут вызваны при запуске и остановке бота
     dp.startup.register(start_bot)

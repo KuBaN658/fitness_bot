@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from aiogram.fsm.state import State, StatesGroup
 
 
+@dataclass
 class LogFoodForm(StatesGroup):
     """
     Класс для управления состоянием формы логирования съеденного продукта.

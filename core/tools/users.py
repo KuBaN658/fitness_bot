@@ -1,16 +1,20 @@
 import os
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+from pydantic import BaseModel
 from core.tools.openweathermap import get_weather
 from core.tools.settings import settings
+from core.tools.app_logger import get_logger
+
+logger = get_logger(__name__)
 
 
-class User:
+class User(BaseModel):
     """
     Класс для хранения и управления данными пользователя.
 
     Атрибуты:
-        id (int): Уникальный идентификатор пользователя.
+        telegram_id (int): Уникальный идентификатор пользователя.
         weight (int): Вес пользователя в килограммах.
         height (int): Рост пользователя в сантиметрах.
         age (int): Возраст пользователя.
@@ -20,35 +24,22 @@ class User:
         logged_calories (int): Количество потребленных калорий.
         burned_calories (int): Количество сожженных калорий.
         burned_water (int): Дополнительное количество воды, которое нужно выпить из-за активности.
+        water_goal (Optional[int]): Дневная норма воды.
+        calorie_goal (Optional[int]): Дневная норма калорий.
     """
 
-    def __init__(
-            self,
-            telegram_id: int,
-            weight: int,
-            height: int,
-            age: int,
-            activity: int,
-            city: str,
-            logged_water: int = 0,
-            logged_calories: int = 0,
-            burned_calories: int = 0,
-            burned_water: int = 0,
-            water_goal: int = None,
-            calorie_goal: int = None
-    ):
-        self.telegram_id = telegram_id
-        self.weight = weight
-        self.height = height
-        self.age = age
-        self.activity = activity
-        self.city = city
-        self.logged_water = logged_water
-        self.logged_calories = logged_calories
-        self.burned_calories = burned_calories
-        self.burned_water = burned_water
-        self.water_goal = water_goal
-        self.calorie_goal = calorie_goal
+    telegram_id: int
+    weight: int
+    height: int
+    age: int
+    activity: int
+    city: str
+    logged_water: int = 0
+    logged_calories: int = 0
+    burned_calories: int = 0
+    burned_water: int = 0
+    water_goal: Optional[int] = None
+    calorie_goal: Optional[int] = None
 
     async def calc_water_goal(self) -> int:
         """
@@ -59,7 +50,7 @@ class User:
         :return: Дневная норма воды в миллилитрах.
         """
         weather = await get_weather(self.city, settings.openweathermap_api_key)
-        temp = weather['main']['temp']
+        temp = weather["main"]["temp"]
         water_goal = self.weight * 30 + round(self.activity / 30 * 500)
         water_goal = water_goal + 1000 if temp > 25 else water_goal
         self.water_goal = water_goal
@@ -90,8 +81,8 @@ class UserStorage:
         """
         Инициализирует хранилище пользователей. Создает файл users.json, если он не существует.
         """
-        if not os.path.exists('./data/users.json'):
-            with open('./data/users.json', 'w', encoding='utf-8') as f:
+        if not os.path.exists("./data/users.json"):
+            with open("./data/users.json", "w", encoding="utf-8") as f:
                 json.dump({}, f)
 
     @staticmethod
@@ -101,10 +92,10 @@ class UserStorage:
 
         :param user: Объект пользователя, данные которого нужно сохранить.
         """
-        with open('./data/users.json', 'r', encoding='utf-8') as f:
+        with open("./data/users.json", "r", encoding="utf-8") as f:
             users = json.load(f)
-        users[str(user.telegram_id)] = user.__dict__
-        with open('./data/users.json', 'w', encoding='utf-8') as f:
+        users[str(user.telegram_id)] = user.model_dump()
+        with open("./data/users.json", "w", encoding="utf-8") as f:
             json.dump(users, f)
 
     @staticmethod
@@ -115,6 +106,9 @@ class UserStorage:
         :param id: Уникальный идентификатор пользователя.
         :return: Словарь с данными пользователя или None, если пользователь не найден.
         """
-        with open('./data/users.json', 'r', encoding='utf-8') as f:
+        with open("./data/users.json", "r", encoding="utf-8") as f:
             users = json.load(f)
-        return users.get(telegram_id)
+        user = users.get(telegram_id)
+        if user is None:
+            raise KeyError("User not found")
+        return User.model_validate(user)

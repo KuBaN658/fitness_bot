@@ -1,6 +1,8 @@
+from dataclasses import dataclass
 from aiogram.fsm.state import State, StatesGroup
 
 
+@dataclass
 class ProfileForm(StatesGroup):
     """
     Класс для управления состоянием формы заполнения профиля пользователя.

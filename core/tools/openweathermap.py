@@ -1,4 +1,7 @@
 import httpx
+from core.tools.app_logger import get_logger
+
+logger = get_logger(__name__)
 
 
 async def get_weather(city, api_key):
@@ -13,6 +16,7 @@ async def get_weather(city, api_key):
         dict: Ответ API в формате JSON, если запрос успешен.
         str: Текст ошибки, если запрос не удался.
     """
+    logger.debug("Получение текущей температуры для города %s", city)
     base_url = "https://api.openweathermap.org/data/2.5/weather"
     params = {
         "q": city,
@@ -25,6 +29,11 @@ async def get_weather(city, api_key):
         if response.status_code == 200:
             data = response.json()
         else:
+            logger.error(
+                "Ошибка при получении текущей температуры для города %s, status code - %d",
+                city,
+                response.status_code
+            )
             return response.text
 
         return data

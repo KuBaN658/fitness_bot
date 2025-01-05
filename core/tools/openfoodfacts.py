@@ -1,6 +1,10 @@
 from typing import Dict, Optional
 import httpx
 
+from core.tools.app_logger import get_logger
+
+logger = get_logger(__name__)
+
 
 async def get_food_info(product_name: str) -> Optional[Dict[str, str | int]]:
     """
@@ -11,6 +15,7 @@ async def get_food_info(product_name: str) -> Optional[Dict[str, str | int]]:
              Если продукт не найден, возвращает словарь с названием продукта и калориями по умолчанию (100).
              В случае ошибки при запросе возвращает None.
     """
+    logger.debug('Получение информации о продукте %s', product_name)
     # Формируем URL для запроса к API OpenFoodFacts
     url = (f"https://world.openfoodfacts.org/cgi/search.pl?action="
            f"process&search_terms={product_name}&json=true")
@@ -34,11 +39,12 @@ async def get_food_info(product_name: str) -> Optional[Dict[str, str | int]]:
                 }
 
         # Если продукт не найден, возвращаем данные по умолчанию
+        logger.debug('Продукт %s не найден', product_name)
         return {
             'name': product_name,
             'calories': 100
         }
 
     # В случае ошибки выводим статус код и возвращаем None
-    print(f"Ошибка: {response.status_code}")
+    logger.error('Ошибка при получении информации о продукте %s', product_name)
     return None

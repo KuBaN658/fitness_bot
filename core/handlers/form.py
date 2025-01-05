@@ -7,9 +7,12 @@ from core.states.profile_form_states import ProfileForm
 from core.states.log_food_states import LogFoodForm
 from core.tools.users import User, UserStorage
 from core.tools.openfoodfacts import get_food_info
+from core.tools.app_logger import get_logger
 
 # Создаем роутер для обработки форм
 form_router = Router()
+
+logger = get_logger(__name__)
 
 
 @form_router.message(Command(commands=['set_profile']))
@@ -32,12 +35,14 @@ async def get_weight(message: Message, state: FSMContext) -> None:
     :param message: Объект сообщения от пользователя.
     :param state: Контекст состояния для управления состоянием пользователя.
     """
-    await message.answer(f'Твой вес: {message.text}\r\nТеперь введите ваш рост.')
     try:
         weight = int(message.text)
     except ValueError:
+        logger.error('Вес не целое число', user_id=message.from_user.id)
         await message.answer('Вес должен быть целым числом.')
+        return
     await state.update_data(weight=weight)
+    await message.answer(f'Твой вес: {message.text}\r\nТеперь введите ваш рост.')
     await state.set_state(ProfileForm.height)
 
 
@@ -49,12 +54,14 @@ async def get_height(message: Message, state: FSMContext) -> None:
     :param message: Объект сообщения от пользователя.
     :param state: Контекст состояния для управления состоянием пользователя.
     """
-    await message.answer(f'Твой рост: {message.text}\r\nТеперь введите ваш возраст.')
     try:
         height = int(message.text)
     except ValueError:
+        logger.error('Рост не целое число', user_id=message.from_user.id)
         await message.answer('Рост должен быть целым числом.')
+        return
     await state.update_data(height=height)
+    await message.answer(f'Твой рост: {message.text}\r\nТеперь введите ваш возраст.')
     await state.set_state(ProfileForm.age)
 
 
@@ -71,7 +78,9 @@ async def get_age(message: Message, state: FSMContext) -> None:
     try:
         age = int(message.text)
     except ValueError:
+        logger.error('Возраст не целое число', user_id=message.from_user.id)
         await message.answer('Возраст должен быть целым числом.')
+        return
     await state.update_data(age=age)
     await state.set_state(ProfileForm.activity)
 
@@ -89,7 +98,9 @@ async def get_activity(message: Message, state: FSMContext) -> None:
     try:
         activity = int(message.text)
     except ValueError:
+        logger.error('Активность не целое число', user_id=message.from_user.id)
         await message.answer('Активность должна быть целым числом.')
+        return
     await state.update_data(activity=activity)
     await state.set_state(ProfileForm.city)
 
@@ -113,13 +124,6 @@ async def get_city(message: Message, state: FSMContext) -> None:
         f'Активность: {data.get("activity")}\r\n'
         f'Город: {data.get("city")}\r\n'
     )
-    await message.answer(
-        'Вы успешно заполнили профиль. Теперь вы можете воспользоваться командами:\r\n'
-        '/log_water <количество выпитой воды в мл(целое число)>\r\n'
-        '/log_food <название съеденного продукта>\r\n'
-        '/log_workout <тип тренировки> <время (минут)>\r\n'
-        '/check_progress'
-    )
 
     # Создаем объект пользователя и сохраняем его в хранилище
     user = User(
@@ -131,6 +135,22 @@ async def get_city(message: Message, state: FSMContext) -> None:
         city=data.get("city")
     )
     UserStorage.put_user(user)
+    logger.info(
+        'Пользователь успешно заполнил профиль weight:%d height:%d age:%d activity:%d city:%s',
+        data.get("weight"),
+        data.get("height"),
+        data.get("age"),
+        data.get("activity"),
+        data.get("city"),
+        user_id=message.from_user.id,
+    )
+    await message.answer(
+        'Вы успешно заполнили профиль. Теперь вы можете воспользоваться командами:\r\n'
+        '/log_water <количество выпитой воды в мл(целое число)>\r\n'
+        '/log_food <название съеденного продукта>\r\n'
+        '/log_workout <тип тренировки> <время (минут)>\r\n'
+        '/check_progress'
+    )
     await state.clear()
 
 
@@ -145,11 +165,10 @@ async def log_water(message: Message, state: FSMContext) -> None:
     product = ' '.join(message.text.split()[1:])
     if not product:
         await message.answer('Введите название продукта')
+        logger.warning('Не введен продукт', user_id=message.from_user.id)
         return
     calories = await get_food_info(product)
     calories = calories.get('calories')
-    if not calories:
-        calories = 50
     await message.answer(f'{product} - {calories} ккал на 100г. Сколько грамм вы съели?')
     await state.set_state(LogFoodForm.weight)
     await state.set_data({'product': product, 'calories': calories})
@@ -168,10 +187,12 @@ async def get_weight_food(message: Message, state: FSMContext) -> None:
     try:
         weight = int(message.text)
     except ValueError:
+        logger.error('Вес продукта не целое число', user_id=message.from_user.id)
         await message.answer('Вес продукта должен быть целым числом.')
     user = UserStorage.get_user(str(message.from_user.id))
-    user = User(**user)
-    user.logged_calories += round(int(weight) / 100 * calories)
+    logged_calories = round(weight / 100 * calories)
+    user.logged_calories += logged_calories
     UserStorage.put_user(user)
-    await message.answer(f'Записано: {user.logged_calories} ккал.')
+    logger.info('Записано калорий: %d', logged_calories, user_id=message.from_user.id)
+    await message.answer(f'Записано: {logged_calories} ккал.')
     await state.clear()

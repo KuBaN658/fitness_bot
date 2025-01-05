@@ -7,3 +7,4 @@ data/
 poetry.lock
 pyproject.toml
 check_style.sh
+logs/
