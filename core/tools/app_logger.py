@@ -2,10 +2,6 @@ import logging
 import os
 from typing import Any, Dict, Tuple
 
-# Проверяем, существует ли директория для логов, и если нет, создаем её
-if not os.path.exists("./logs/bot.log"):
-    os.mkdir("./logs")
-
 # Формат логов, который будет использоваться для всех обработчиков
 _log_format = "%(asctime)s - %(levelname)s - %(name)s - %(filename)s.%(funcName)s(%(lineno)d) - %(message)s"
 
