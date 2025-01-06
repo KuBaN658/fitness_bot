@@ -82,6 +82,7 @@ class UserStorage:
         Инициализирует хранилище пользователей. Создает файл users.json, если он не существует.
         """
         if not os.path.exists("./data/users.json"):
+            os.makedirs("./data")
             with open("./data/users.json", "w", encoding="utf-8") as f:
                 json.dump({}, f)
 
