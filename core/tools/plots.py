@@ -1,7 +1,7 @@
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-from aiogram.types import FSInputFile
+from aiogram.types.input_file import FSInputFile
 from core.tools.users import UserStorage
 
 

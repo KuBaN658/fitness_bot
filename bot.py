@@ -2,10 +2,11 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from core.tools.settings import settings
 from core.handlers.basic import basic_router
-from core.handlers.form import form_router
+from core.handlers.profile import profile_router
+from core.handlers.logs import log_router
 from core.tools.users import UserStorage
 from core.tools.middlewares import LoggingMiddleware
-
+from core.keyboards.menu import set_main_menu
 from core.tools import app_logger
 
 logger = app_logger.get_logger(__name__)
@@ -44,8 +45,9 @@ async def main() -> None:
     # Создание диспетчера для обработки сообщений
     dp: Dispatcher = Dispatcher()
 
-    # Подключение роутеров для обработки команд и форм
-    dp.include_router(form_router)
+    # Подключение роутеров для обработки команд
+    dp.include_router(profile_router)
+    dp.include_router(log_router)
     dp.include_router(basic_router)
 
     # Подключение мидлваре для логирования сообщений
@@ -55,6 +57,7 @@ async def main() -> None:
     bot = Bot(token=settings.bot_token)
 
     # Регистрация функций, которые будут вызваны при запуске и остановке бота
+    dp.startup.register(set_main_menu)
     dp.startup.register(start_bot)
     dp.shutdown.register(stop_bot)
 

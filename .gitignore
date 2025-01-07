@@ -8,4 +8,5 @@ poetry.lock
 pyproject.toml
 check_style.sh
 logs/
-tmp/
+tmp/food.png
+tmp/water.png

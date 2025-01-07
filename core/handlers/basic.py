@@ -7,6 +7,7 @@ from core.tools.users import UserStorage, User
 from core.tools.app_logger import get_logger
 from core.keyboards.inline import keybord_plots
 from core.tools.plots import plot_water, plot_food
+from core.tools.diet.diet_food import get_training
 
 # Создаем роутер для обработки базовых команд
 basic_router = Router()
@@ -15,6 +16,7 @@ logger = get_logger(__name__)
 
 
 @basic_router.message(Command(commands=['start']))
+@basic_router.message(Command(commands=['help']))
 async def get_start(message: Message) -> None:
     """
     Обработчик команды /start. Приветствует пользователя и предлагает ввести команду /set_profile.
@@ -23,81 +25,12 @@ async def get_start(message: Message) -> None:
     """
     await message.answer(
         'Привет, я фитнес-бот. Я могу расчитывать норму потребления воды и калорий.\r\n' +
-        'Для начала работы введи команду /set_profile',
+        'Для начала вы должны настроить свой профиль. Воспользуйтесь кнопкой menu ' +
+        'или введите команду /set_profile. \r\n\r\nЕсли вы уже заполнили профиль, вы можете ' +
+        'учитывать количество выпитой воды, количество калорий и треннировки ' +
+        'с помощью команд: \r\n/log_water \r\n/log_food \r\n/log_workout \r\n' +
+        'Спомощью команды /check_progress вы можете посмотреть прогресс за текущий день.'
     )
-
-
-@basic_router.message(Command(commands=['log_water']))
-async def log_water(message: Message) -> None:
-    """
-    Обработчик команды /log_water. Логирует количество выпитой воды.
-
-    :param message: Объект сообщения от пользователя.
-    """
-    args = message.text.strip().split()
-
-    if len(args) < 2:
-        await message.answer('Введите количество воды в мл через пробел.')
-        logger.warning('Неверный формат команды.', user_id=message.from_user.id)
-        return
-    try:
-        water = int(args[1])
-    except ValueError:
-        logger.error('Передано не целое число.', user_id=message.from_user.id)
-        await message.answer('Количество воды должно быть целым числом')
-    else:
-        try:
-            user: User = UserStorage.get_user(str(message.from_user.id))
-        except KeyError:
-            logger.error('Пользователь не найден', user_id=message.from_user.id)
-            await message.answer('Вы еще не заполнили профиль. Введите команду /set_profile')
-            return
-        now = datetime.now()
-        if user.logged_water.get(str(now.date())) is None:
-            await user.add_day()
-        user.logged_water[str(now.date())][now.hour] += water
-        UserStorage.put_user(user)
-        await message.answer(f'Вы выпили {water} мл воды')
-
-
-@basic_router.message(Command(commands=['log_workout']))
-async def log_workout(message: Message) -> None:
-    """
-    Обработчик команды /log_workout. Логирует тренировку и рассчитывает сожженные калории и воду.
-
-    :param message: Объект сообщения от пользователя.
-    """
-    args = message.text.strip().split()[1:]
-
-    if len(args) != 2:
-        await message.answer('Ваша команда должна выглядеть: '
-                             '/log_workout <тип тренировки> <количество минут>')
-        logger.warning('Неверное количество аргументов', user_id=message.from_user.id)
-        return
-    type_workout = args[0]
-    try:
-        duration = int(args[1])
-    except ValueError:
-        await message.answer('Длительность тренировки должна быть в минутах (целое число)')
-        logger.error('Передано не целое число.', user_id=message.from_user.id)
-    else:
-        try:
-            user: User = UserStorage.get_user(str(message.from_user.id))
-        except KeyError:
-            logger.error('Пользователь не найден', user_id=message.from_user.id)
-            await message.answer('Вы еще не заполнили профиль. Введите команду /set_profile')
-            return
-        now = datetime.now()
-        if user.burned_calories.get(str(now.date())) is None:
-            await user.add_day()
-        user.burned_calories[str(now.date())][now.hour] += duration * 16
-        user.burned_water[str(now.date())][now.hour] += duration * 10
-        UserStorage.put_user(user)
-        logger.info('Тренировка записана', user_id=message.from_user.id)
-        await message.answer(
-            f'{type_workout} {duration} минут - {duration * 16} ккал.\r\n'
-            f'Дополнительно выпейте {duration * 10} мл воды.'
-        )
 
 
 @basic_router.message(Command(commands=['check_progress']))
@@ -111,7 +44,9 @@ async def check_progress(message: Message) -> None:
         user: User = UserStorage.get_user(str(message.from_user.id))
     except KeyError:
         logger.error('Пользователь не найден', user_id=message.from_user.id)
-        await message.answer('Вы еще не заполнили профиль. Введите команду /set_profile')
+        await message.answer(
+            'Вы еще не заполнили профиль. Введите команду /set_profile'
+            )
         return
     today = str(datetime.now().date())
     if user.burned_water.get(today) is None:
@@ -138,6 +73,11 @@ async def check_progress(message: Message) -> None:
         f'- Баланс: {logged_calories - burned_calories} ккал.',
         reply_markup=keybord_plots
     )
+    if logged_calories - burned_calories > calorie_goal:
+        training = get_training()
+        await message.answer(
+                f'Вы кушаете больше чем двигаетесь, тренировка: {training} для вас.'
+            )
 
 
 @basic_router.callback_query()
