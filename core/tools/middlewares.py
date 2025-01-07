@@ -30,5 +30,5 @@ class LoggingMiddleware(BaseMiddleware):
         # Логируем текст сообщения и ID пользователя
         logger.info(event.text, user_id=event.from_user.id)
 
-        # Передаем управление следующему middleware или обработчику
+        # Передаем управление обработчику
         return await handler(event, data)

@@ -1,3 +1,4 @@
+from datetime import datetime
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram import Router
@@ -6,7 +7,7 @@ from aiogram.filters import Command
 from core.states.profile_form_states import ProfileForm
 from core.states.log_food_states import LogFoodForm
 from core.tools.users import User, UserStorage
-from core.tools.openfoodfacts import get_food_info
+from core.tools.llm_api import get_food_info_llm
 from core.tools.app_logger import get_logger
 
 # Создаем роутер для обработки форм
@@ -155,7 +156,7 @@ async def get_city(message: Message, state: FSMContext) -> None:
 
 
 @form_router.message(Command(commands=['log_food']))
-async def log_water(message: Message, state: FSMContext) -> None:
+async def log_food(message: Message, state: FSMContext) -> None:
     """
     Обработчик команды /log_food. Начинает процесс логирования съеденного продукта.
 
@@ -167,7 +168,7 @@ async def log_water(message: Message, state: FSMContext) -> None:
         await message.answer('Введите название продукта')
         logger.warning('Не введен продукт', user_id=message.from_user.id)
         return
-    calories = await get_food_info(product)
+    calories = await get_food_info_llm(product)
     calories = calories.get('calories')
     await message.answer(f'{product} - {calories} ккал на 100г. Сколько грамм вы съели?')
     await state.set_state(LogFoodForm.weight)
@@ -189,9 +190,12 @@ async def get_weight_food(message: Message, state: FSMContext) -> None:
     except ValueError:
         logger.error('Вес продукта не целое число', user_id=message.from_user.id)
         await message.answer('Вес продукта должен быть целым числом.')
-    user = UserStorage.get_user(str(message.from_user.id))
+    user: User = UserStorage.get_user(str(message.from_user.id))
     logged_calories = round(weight / 100 * calories)
-    user.logged_calories += logged_calories
+    now = datetime.now()
+    if user.logged_calories.get(str(now.date())) is None:
+        await user.add_day()
+    user.logged_calories[str(now.date())][now.hour] += logged_calories
     UserStorage.put_user(user)
     logger.info('Записано калорий: %d', logged_calories, user_id=message.from_user.id)
     await message.answer(f'Записано: {logged_calories} ккал.')

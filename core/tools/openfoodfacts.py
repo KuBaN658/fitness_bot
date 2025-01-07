@@ -19,7 +19,7 @@ async def get_food_info(product_name: str) -> Optional[Dict[str, str | int]]:
     # Формируем URL для запроса к API OpenFoodFacts
     url = (f"https://world.openfoodfacts.org/cgi/search.pl?action="
            f"process&search_terms={product_name}&json=true")
-    timeout = httpx.Timeout(20.0)
+    timeout = httpx.Timeout(30.0)
 
     # Используем асинхронный HTTP-клиент для выполнения запроса
     async with httpx.AsyncClient() as client:

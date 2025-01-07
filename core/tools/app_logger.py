@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Any, Dict, Tuple
 
 # Формат логов, который будет использоваться для всех обработчиков

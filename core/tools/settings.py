@@ -22,6 +22,8 @@ class Settings:
     bot_token: str
     admin_id: int
     openweathermap_api_key: str
+    folder_id: str
+    iam_token: str
 
 
 # Создаем экземпляр класса Settings, используя переменные окружения
@@ -29,4 +31,6 @@ settings = Settings(
     bot_token=os.getenv("BOT_TOKEN"),
     admin_id=int(os.getenv("ADMIN_ID")),
     openweathermap_api_key=os.getenv("OPENWEATHERMAP_API_KEY"),
+    folder_id=os.getenv("FOLDER_ID"),
+    iam_token=os.getenv("IAM_TOKEN"),
 )
